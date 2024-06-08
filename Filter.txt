@@ -28,8 +28,13 @@ var CJS;
                 }
                 recordsData = yield this.getRecordsDataPromise;
                 if (((_a = filter === null || filter === void 0 ? void 0 : filter.filterData) === null || _a === void 0 ? void 0 : _a.length) > 0) {
-                    recordsData = CJS.FilterHelper.getRecordsFromSecondaryFilterApplied(recordsData, filter.filterData);
-                }
+                    recordsData = CJS.FilterHelper.getRecordsFromSecondaryFilterApplied(recordsData, filter.filterData, filter.searchKey);
+                } else {
+					if(filter.searchKey.length > 0) {
+						recordsData = CJS.FilterHelper.filterRecordsBySearchString(recordsData, filter.searchKey);
+					}
+				}
+				
                 this.orderRecordsData(recordsData, request.isAscending);
                 let recordsAfterLastItem = [];
                 if (request.lastItem) {
@@ -62,9 +67,9 @@ var CJS;
 					
 					const primaryId = this.context.page.entityId;
 					const filter="?$filter=cjs_accountid/accountid eq '{0}'"
-					let sampleRawRecords = yield this.context.webAPI.retrieveMultipleRecords("cjs_postactivity", CJS.String.formatString(filter, primaryId));
-					if ((sampleRawRecords === null || sampleRawRecords === void 0 ? void 0 : sampleRawRecords.entities.length) != 0) {
-						recordsData = this.processRecordsData(sampleRawRecords.entities);
+					let filteredRawRecords = yield this.context.webAPI.retrieveMultipleRecords("cjs_postactivity", CJS.String.formatString(filter, primaryId));
+					if ((filteredRawRecords === null || filteredRawRecords === void 0 ? void 0 : filteredRawRecords.entities.length) != 0) {
+						recordsData = this.processRecordsData(filteredRawRecords.entities);
 					}
 				} catch(error) { console.log(error); recordsData = []; }
                 return recordsData;
@@ -75,14 +80,14 @@ var CJS;
 			try {
 				rawRecordsData === null || rawRecordsData === void 0 ? void 0 : rawRecordsData.forEach(element => {
 					let recordData = {
-						id: element.cjs_postactivityid,
-						sortDateValue: element.cjs_createdon,
+						id: element["cjs_postactivityid"],
+						sortDateValue: element["cjs_createdon"],
 						data: JSON.stringify({
-							id: element.cjs_postactivityid,
-							name: element.cjs_postactivityname,
-							filterFieldId: element.cjs_postactivitytype,
+							id: element["cjs_postactivityid"],
+							name: element["cjs_postactivityname"],
+							filterFieldId: element["cjs_postactivitytype"],
 							filterFieldValue: element["cjs_postactivitytype@OData.Community.Display.V1.FormattedValue"],
-							createdOn: element.cjs_createdon,
+							createdOn: element["cjs_createdon"],
 						})
 					};
 					recordsData.push(recordData);
@@ -96,10 +101,12 @@ var CJS;
                  	this.getRecordsDataPromise = this.fetchAllRecords();
                 }
 				var filtersData = [];
-				
+				var filterOptions = [];
+				var recordsCount;
+
 				try {
 					var recordsData = yield this.getRecordsDataPromise;
-					var recordsCount = recordsData.length;
+					recordsCount = recordsData.length;
 					
 					const filterOptions = recordsData.reduce((acc, item) => {
 						const record = JSON.parse(item.data);
@@ -136,22 +143,12 @@ var CJS;
 							isExpanded: true,
 							options: Object.values(filterOptions),
 						},
-						{
-							// #3 - new custom filter group
-							name: "TestActivity",
-							label: "Test Activities",
-							type: "MultiSelect" /* MultiSelect */,
-							isExpanded: true,
-							options: Object.values(filterOptions),
-						},
 					];
 					CJS.FilterHelper.setFilterData(filtersData);
-					
-					//filter.filterData = CJS.FilterHelper.updateRequestFilterData(filter.filterData);
 		
 					if ((filter === null || filter === void 0 ? void 0 : filter.filterData) && filter.filterData.length > 0) {
 						filtersData = CJS.FilterHelper.getFilterDetailsFilterApplied(filtersData, filter.filterData);
-						//recordsData = FilterHelper.getRecordsFromSecondaryFilterApplied(recordsData, filter.filterData);
+						//recordsData = FilterHelper.getRecordsFromSecondaryFilterApplied(recordsData, filter.filterData, filter.searchKey);
 					}
 					// add modifieddate group data to filterDetails
 					// let modifiedDateGroup = FilterHelper.getModifiedDateFilterDetails(recordsData);
@@ -304,20 +301,43 @@ var CJS;
 				return requestFilterData;
 			} catch(error) { console.log(error); }
 		}
-        static getRecordsFromSecondaryFilterApplied(recordsData, filterData) {
+        static getRecordsFromSecondaryFilterApplied(recordsData, filterData, searchKey) {
             let filterKey = [];
+			let hasOtherFilter = false;
+			let hasSourceFilter = false;
+			
+			if(searchKey.length > 0) {
+				recordsData = this.filterRecordsBySearchString(recordsData, searchKey);
+			}
 
             filterData === null || filterData === void 0 ? void 0 : filterData.forEach((group) => {
                 var _a;
                 (_a = group.options) === null || _a === void 0 ? void 0 : _a.forEach((option) => {
-                    if (option.isSelected && group.name == "PostActivity") {
-                        filterKey.push(option.value);
+                    //if (option.isSelected && group.name == "PostActivity") {
+                    //    filterKey.push(option.value);
+                    //}
+					if (option.isSelected) {
+						if(group.name == "Module") {
+							if(option.value == "PostActivity") {
+								hasSourceFilter = true;
+							} else {
+								hasOtherFilter = true;
+							}
+						} else if(group.name == "PostActivity") {
+							filterKey.push(option.value);
+						}
                     }
                 });
             });
 
 			if (filterKey.length === 0) {
 				if (this.isParentModuleSelected(filterData)) {
+					if(hasSourceFilter) {
+						return recordsData;
+					} else if(hasOtherFilter) {
+						return [];
+					}
+				} else {
 					return recordsData;
 				}
 			}
@@ -333,6 +353,13 @@ var CJS;
 				return filteredRecords;
 			}
         }
+		static filterRecordsBySearchString(data, searchString) {
+			return data.filter(item => {
+				return Object.keys(item).some(key => {
+					return item[key].toString().toLowerCase().includes(searchString.toLowerCase());
+				});
+			});
+		}
         static isParentModuleSelected(requestFilterData) {
             let isSelected = false;
             requestFilterData === null || requestFilterData === void 0 ? void 0 : requestFilterData.forEach((group) => {
@@ -417,7 +444,11 @@ var CJS;
         }
         static updateParentModuleFilterData(filteredData, selectedFilterModules, requestFilterData) {
             if (selectedFilterModules.indexOf("Module" /* RecordType */) == -1) {
-                filteredData.push(CJS.FilterHelper.getFilterData()[0]);
+				/*var formFilterData = CJS.FilterHelper.getFilterData();
+				formFilterData === null || formFilterData === void 0 ? void 0 : formFilterData.forEach((element) => {
+					filteredData.push(element);
+				});*/
+				filteredData.push(CJS.FilterHelper.getFilterData()[0]);
             }
             // adjust module counts
             requestFilterData === null || requestFilterData === void 0 ? void 0 : requestFilterData.forEach((group) => {
@@ -461,6 +492,19 @@ var CJS;
         }
         static getFilterData() {
 			return this.FilterData;
+        }
+        static getRecordCount() {
+			return ((this.RecordCount !== undefined && this.RecordCount !== null) ? this.RecordCount : 0);
+        }
+        static setFilterOptionData(oFilterOptionData, iRecordCount) {
+			this.FilterOptionData = oFilterOptionData;
+			this.RecordCount = iRecordCount;
+        }
+        static getFilterOptionData() {
+			return this.FilterOptionData;
+        }
+        static isFilterOptionDataLoaded() {
+			return (this.FilterOptionData !== null && this.FilterOptionData !== undefined);
         }
     }
     CJS.FilterHelper = FilterHelper;
