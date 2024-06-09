@@ -11,6 +11,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 var CJS;
 (function (CJS) {
     class PostActivityRecordSource {
+		recordsData = [];
+		
         init(context) {
             this.context = context;
             this.svgIconSrcPath = Xrm.Utility.getGlobalContext().getWebResourceUrl("msdyn_cec_Available.svg");
@@ -27,12 +29,13 @@ var CJS;
                     this.getRecordsDataPromise = this.fetchAllRecords();
                 }
                 recordsData = yield this.getRecordsDataPromise;
+				this.recordsData = recordsData;
+
                 if (((_a = filter === null || filter === void 0 ? void 0 : filter.filterData) === null || _a === void 0 ? void 0 : _a.length) > 0) {
                     recordsData = CJS.FilterHelper.getRecordsFromSecondaryFilterApplied(recordsData, filter.filterData, filter.searchKey);
-                } else {
-					if(filter.searchKey.length > 0) {
-						recordsData = CJS.FilterHelper.filterRecordsBySearchString(recordsData, filter.searchKey);
-					}
+                } else if(filter.searchKey.length > 0) {
+					recordsData = CJS.FilterHelper.filterRecordsBySearchString(recordsData, filter.searchKey);
+					//this.recordsData = recordsData;
 				}
 				
                 this.orderRecordsData(recordsData, request.isAscending);
@@ -52,11 +55,12 @@ var CJS;
                 }
                 const recordResponse = {
                     requestId: request.requestId,
-                    records: recordsDataCounted,
+                    records: recordsDataCounted
                 };
                 return Promise.resolve(recordResponse);
             });
         }
+
         fetchAllRecords() {
             return __awaiter(this, void 0, void 0, function* () {
                 let recordsData = [];
@@ -97,16 +101,25 @@ var CJS;
         }
         getFilterDetails(filter) {
             return __awaiter(this, void 0, void 0, function* () {
-                if (!this.getRecordsDataPromise) {
-                 	this.getRecordsDataPromise = this.fetchAllRecords();
-                }
 				var filtersData = [];
-				var filterOptions = [];
-				var recordsCount;
+				var recordsData = (this.recordsData !== undefined && this.recordsData !== null) ? this.recordsData : [];
+				//var recordsData = [];
 
-				try {
-					var recordsData = yield this.getRecordsDataPromise;
-					recordsCount = recordsData.length;
+				try {		
+					if ((filter === null || filter === void 0 ? void 0 : filter.filterData) && filter.filterData.length > 0) {
+						filtersData = CJS.FilterHelper.getFilterDetailsFilterApplied(filtersData, filter.filterData);
+						//recordsData = CJS.FilterHelper.getRecordsFromSecondaryFilterApplied(recordsData, filter.filterData, filter.searchKey);
+					}/* else if(filter.searchKey.length > 0) {
+						recordsData = CJS.FilterHelper.filterRecordsBySearchString(recordsData, filter.searchKey);
+					}*/
+					
+					recordsData = CJS.FilterHelper.getRecordsFromSecondaryFilterApplied(recordsData, filter.filterData, filter.searchKey);
+
+					// add modifieddate group data to filterDetails
+					// let modifiedDateGroup = FilterHelper.getModifiedDateFilterDetails(recordsData);
+					// if (modifiedDateGroup.options && modifiedDateGroup.options.length > 0) {
+					// 	filtersData.push(modifiedDateGroup);
+					// }
 					
 					const filterOptions = recordsData.reduce((acc, item) => {
 						const record = JSON.parse(item.data);
@@ -125,8 +138,8 @@ var CJS;
 					filtersData = [
 						{
 							// #1 - new filter type in existing filter group 'Record Type'
-							name: "Module" /* RecordType */,
-							type: "MultiSelect" /* MultiSelect */,
+							name: "Module",
+							type: "MultiSelect",
 							options: [
 								{
 									value: "PostActivity",
@@ -139,22 +152,12 @@ var CJS;
 							// #2 - new custom filter group
 							name: "PostActivity",
 							label: "Post Activities",
-							type: "MultiSelect" /* MultiSelect */,
+							type: "MultiSelect",
 							isExpanded: true,
 							options: Object.values(filterOptions),
 						},
 					];
 					CJS.FilterHelper.setFilterData(filtersData);
-		
-					if ((filter === null || filter === void 0 ? void 0 : filter.filterData) && filter.filterData.length > 0) {
-						filtersData = CJS.FilterHelper.getFilterDetailsFilterApplied(filtersData, filter.filterData);
-						//recordsData = FilterHelper.getRecordsFromSecondaryFilterApplied(recordsData, filter.filterData, filter.searchKey);
-					}
-					// add modifieddate group data to filterDetails
-					// let modifiedDateGroup = FilterHelper.getModifiedDateFilterDetails(recordsData);
-					// if (modifiedDateGroup.options && modifiedDateGroup.options.length > 0) {
-					// 	filtersData.push(modifiedDateGroup);
-					// }
 				}catch(error) { console.log(error); filtersData = [];}
 				
 				return Promise.resolve(filtersData);
@@ -444,11 +447,11 @@ var CJS;
         }
         static updateParentModuleFilterData(filteredData, selectedFilterModules, requestFilterData) {
             if (selectedFilterModules.indexOf("Module" /* RecordType */) == -1) {
-				/*var formFilterData = CJS.FilterHelper.getFilterData();
+				var formFilterData = CJS.FilterHelper.getFilterData();
 				formFilterData === null || formFilterData === void 0 ? void 0 : formFilterData.forEach((element) => {
 					filteredData.push(element);
-				});*/
-				filteredData.push(CJS.FilterHelper.getFilterData()[0]);
+				});
+				//filteredData.push(CJS.FilterHelper.getFilterData()[0]);
             }
             // adjust module counts
             requestFilterData === null || requestFilterData === void 0 ? void 0 : requestFilterData.forEach((group) => {
@@ -466,17 +469,19 @@ var CJS;
         }
         static updateSelectedParentModuleValues(name, count, isFirstIteration, filteredData) {
             var _a;
-            (_a = filteredData
-                .filter((data) => {
-                return data.name == "Module" /* RecordType */;
-            })[0]
-                .options) === null || _a === void 0 ? void 0 : _a.forEach((option) => {
-                if (name.indexOf(option.value) > -1) {
-                    option.count = isFirstIteration ? count : option.count + count;
-                    option.isSelected = true;
-                }
-            });
+			if(filteredData !== undefined && filteredData !== null && filteredData.length > 0) {
+				(_a = filteredData.filter((data) => {
+					return data.name == "Module" /* RecordType */;
+				})[0]
+					.options) === null || _a === void 0 ? void 0 : _a.forEach((option) => {
+					if (name.indexOf(option.value) > -1) {
+						option.count = isFirstIteration ? count : option.count + count;
+						option.isSelected = true;
+					}
+				});
+			}
         }
+		
         static updateChildModuleFilterData(childModules) {
             let childGroups = [];
             let allFiltersData = CJS.FilterHelper.getFilterData();
