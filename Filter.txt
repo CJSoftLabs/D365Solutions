@@ -35,7 +35,6 @@ var CJS;
                     recordsData = CJS.FilterHelper.getRecordsFromSecondaryFilterApplied(recordsData, filter.filterData, filter.searchKey);
                 } else if(filter.searchKey.length > 0) {
 					recordsData = CJS.FilterHelper.filterRecordsBySearchString(recordsData, filter.searchKey);
-					//this.recordsData = recordsData;
 				}
 				
                 this.orderRecordsData(recordsData, request.isAscending);
@@ -108,19 +107,28 @@ var CJS;
 				try {		
 					if ((filter === null || filter === void 0 ? void 0 : filter.filterData) && filter.filterData.length > 0) {
 						filtersData = CJS.FilterHelper.getFilterDetailsFilterApplied(filtersData, filter.filterData);
-						//recordsData = CJS.FilterHelper.getRecordsFromSecondaryFilterApplied(recordsData, filter.filterData, filter.searchKey);
-					}/* else if(filter.searchKey.length > 0) {
-						recordsData = CJS.FilterHelper.filterRecordsBySearchString(recordsData, filter.searchKey);
-					}*/
+					}
 					
+					//Filter the records and use it for the filters
 					recordsData = CJS.FilterHelper.getRecordsFromSecondaryFilterApplied(recordsData, filter.filterData, filter.searchKey);
+					var isCustomRecordTypeSelected = false;
+					
+					//Retain the selection for the Record Type
+					const filteredArray = filtersData.filter(item => item.name === "Module");
+					if(filteredArray !== undefined && filteredArray !== null && filteredArray.length > 0) {
+						const filteredOptions = filteredArray[0].options.filter(item => item.value === "PostActivity");
+						if(filteredOptions !== undefined && filteredOptions !== null && filteredOptions.length > 0) {
+							isCustomRecordTypeSelected = ((filteredOptions[0].isSelected === undefined || filteredOptions[0].isSelected === null) ? false : filteredOptions[0].isSelected);
+						}
+					}
 
 					// add modifieddate group data to filterDetails
-					// let modifiedDateGroup = FilterHelper.getModifiedDateFilterDetails(recordsData);
-					// if (modifiedDateGroup.options && modifiedDateGroup.options.length > 0) {
-					// 	filtersData.push(modifiedDateGroup);
-					// }
+					//let modifiedDateGroup = CJS.FilterHelper.getModifiedDateFilterDetails(recordsData);
+					//if (modifiedDateGroup.options && modifiedDateGroup.options.length > 0) {
+					//	filtersData.push(modifiedDateGroup);
+					//}
 					
+					//Prepare the Filter options
 					const filterOptions = recordsData.reduce((acc, item) => {
 						const record = JSON.parse(item.data);
 						if (!acc[record.filterFieldId]) {
@@ -135,6 +143,7 @@ var CJS;
 						return acc;
 					}, {});
 
+					//Prepare the Filter data
 					filtersData = [
 						{
 							// #1 - new filter type in existing filter group 'Record Type'
@@ -145,6 +154,7 @@ var CJS;
 									value: "PostActivity",
 									label: "PostActivity",
 									count: recordsData.length,
+									isSelected: isCustomRecordTypeSelected,
 								},
 							],
 						},
@@ -157,6 +167,23 @@ var CJS;
 							options: Object.values(filterOptions),
 						},
 					];
+					
+					//When there is a filter based on text, followed by selection of a child type, then deselection of it removes the parent record type.
+					if(!filtersData.some(item => item.name === "Module")) {
+						filtersData.push(						{
+							// #1 - new filter type in existing filter group 'Record Type'
+							name: "Module",
+							type: "MultiSelect",
+							options: [
+								{
+									value: "PostActivity",
+									label: "PostActivity",
+									count: recordsData.length,
+									isSelected: isCustomRecordTypeSelected,
+								},
+							],
+						});
+					}						
 					CJS.FilterHelper.setFilterData(filtersData);
 				}catch(error) { console.log(error); filtersData = [];}
 				
@@ -316,9 +343,6 @@ var CJS;
             filterData === null || filterData === void 0 ? void 0 : filterData.forEach((group) => {
                 var _a;
                 (_a = group.options) === null || _a === void 0 ? void 0 : _a.forEach((option) => {
-                    //if (option.isSelected && group.name == "PostActivity") {
-                    //    filterKey.push(option.value);
-                    //}
 					if (option.isSelected) {
 						if(group.name == "Module") {
 							if(option.value == "PostActivity") {
