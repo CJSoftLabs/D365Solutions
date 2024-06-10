@@ -10,8 +10,29 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 
 var CJS;
 (function (CJS) {
-    class PostActivityRecordSource {
+    class CustomGenericRecordSource {
 		recordsData = [];
+		
+		constructor() {
+			//CJS.FilterHelper.setPrimaryEntity("PostActivity");
+			//CJS.FilterHelper.setRecordSourceConfig(JSON.parse('{"SvgIconSrcPath": "msdyn_cec_Available.svg","PrimaryEntityName": "PostActivity","PrimaryEntityLogicalName": "cjs_postactivity","RecordFilter": "?$filter=cjs_accountid/accountid eq '{0}'","FilterLabel": "Post Activities","RecordFields": {"IdField": "cjs_postactivityid","SortDateField": "cjs_createdon","NameField": "cjs_postactivityname","FilterIdField": "cjs_postactivitytype","FilterValueField": "cjs_postactivitytype@OData.Community.Display.V1.FormattedValue""CreatedOnField": "cjs_createdon"}}'));
+			
+			CJS.FilterHelper.setRecordSourceConfig({
+	SvgIconSrcPath: "msdyn_cec_Available.svg",
+	PrimaryEntityName: "PostActivity",
+	PrimaryEntityLogicalName: "cjs_postactivity",
+	RecordFilter: "?$filter=cjs_accountid/accountid eq '{0}'",
+	FilterLabel: "Post Activities",
+	RecordFields: {
+		IdField: "cjs_postactivityid",
+		SortDateField: "cjs_createdon",
+		NameField: "cjs_postactivityname",
+		FilterIdField: "cjs_postactivitytype",
+		FilterValueField: "cjs_postactivitytype@OData.Community.Display.V1.FormattedValue",
+		CreatedOnField: "cjs_createdon",
+	}
+});
+		}
 		
         init(context) {
             this.context = context;
@@ -19,7 +40,7 @@ var CJS;
             return Promise.resolve();
         }
         getRecordSourceInfo() {
-            return { name: "PostActivityRecordSource" };
+            return { name: "CustomGenericRecordSource" };
         }
         getRecordsData(request, filter) {
             var _a;
@@ -65,9 +86,6 @@ var CJS;
                 let recordsData = [];
 				
 				try {
-					/*let oConfig = new CJS.TimelineConfig();
-					oConfig.Configs.push({});*/
-					
 					const primaryId = this.context.page.entityId;
 					const filter="?$filter=cjs_accountid/accountid eq '{0}'"
 					let filteredRawRecords = yield this.context.webAPI.retrieveMultipleRecords("cjs_postactivity", CJS.String.formatString(filter, primaryId));
@@ -116,7 +134,7 @@ var CJS;
 					//Retain the selection for the Record Type
 					const filteredArray = filtersData.filter(item => item.name === "Module");
 					if(filteredArray !== undefined && filteredArray !== null && filteredArray.length > 0) {
-						const filteredOptions = filteredArray[0].options.filter(item => item.value === "PostActivity");
+						const filteredOptions = filteredArray[0].options.filter(item => item.value === CJS.FilterHelper.getRecordSourceConfig().PrimaryEntityName);
 						if(filteredOptions !== undefined && filteredOptions !== null && filteredOptions.length > 0) {
 							isCustomRecordTypeSelected = ((filteredOptions[0].isSelected === undefined || filteredOptions[0].isSelected === null) ? false : filteredOptions[0].isSelected);
 						}
@@ -151,7 +169,7 @@ var CJS;
 							type: "MultiSelect",
 							options: [
 								{
-									value: "PostActivity",
+									value: CJS.FilterHelper.getRecordSourceConfig().PrimaryEntityName,
 									label: "PostActivity",
 									count: recordsData.length,
 									isSelected: isCustomRecordTypeSelected,
@@ -160,7 +178,7 @@ var CJS;
 						},
 						{
 							// #2 - new custom filter group
-							name: "PostActivity",
+							name: CJS.FilterHelper.getRecordSourceConfig().PrimaryEntityName,
 							label: "Post Activities",
 							type: "MultiSelect",
 							isExpanded: true,
@@ -176,7 +194,7 @@ var CJS;
 							type: "MultiSelect",
 							options: [
 								{
-									value: "PostActivity",
+									value: CJS.FilterHelper.getRecordSourceConfig().PrimaryEntityName,
 									label: "PostActivity",
 									count: recordsData.length,
 									isSelected: isCustomRecordTypeSelected,
@@ -218,7 +236,7 @@ var CJS;
                 header: { components: headerComponents },
                 body: { components: bodyComponents },
                 footer: { components: footerComponents },
-                accessibleName: "PostActivityDataSource Record: " + recordId,
+                accessibleName: "CustomGenericDataSource Record: " + recordId,
                 sortDateValue,
                 icon,
                 bubbleIcon,
@@ -240,7 +258,7 @@ var CJS;
         createIcon() {
             return {
                 type: 205,
-                accessibleName: "PostActivityDataSource icon accessibleName",
+                accessibleName: "CustomGenericDataSource icon accessibleName",
             };
         }
         createIconComponent(recordId) {
@@ -252,21 +270,21 @@ var CJS;
             return this.context.factory.createElement("IMG", imgProps);
         }
         getModuleName() {
-            return "PostActivityDataSource";
+            return "CustomGenericDataSource";
         }
         createHeaderComponent(recordId, recordName) {
             return this.context.factory.createElement("Label", {
-                key: "PostActivityDataSource_" + recordId + "_header",
+                key: "CustomGenericDataSource_" + recordId + "_header",
             }, "[Header] " + recordName);
         }
         createBodyComponent(recordId) {
             return this.context.factory.createElement("Label", {
-                key: "PostActivityDataSource_" + recordId + "body",
+                key: "CustomGenericDataSource_" + recordId + "body",
             }, "[Body] " + "Post Activity Id: " + recordId);
         }
         createFooterComponent(recordId, date, isExpanded) {
             return this.context.factory.createElement("Label", {
-                key: "PostActivityDataSource_" + recordId + "footer",
+                key: "CustomGenericDataSource_" + recordId + "footer",
             }, "[Footer] " + "createdOn: " + date + "	RecordStatus: " + (isExpanded ? " Expanded" : " Collapsed"));
         }
         // non-robust orderRecordsData
@@ -287,12 +305,15 @@ var CJS;
             }
         }
     }
-    CJS.PostActivityRecordSource = PostActivityRecordSource;
-})(CJS || (CJS = {}));
+    CJS.CustomGenericRecordSource = CustomGenericRecordSource;
 
-var CJS;
-(function (CJS) {
     class FilterHelper {
+		static setRecordSourceConfig(config) {
+			this.RecordSourceConfig = config;
+		}
+		static getRecordSourceConfig() {
+			return this.RecordSourceConfig;
+		}
         static getFilterDetailsFilterApplied(allFiltersData, requestFilterData) {
             let selectedFilterModules = [];
             let filteredData = [];
@@ -345,12 +366,12 @@ var CJS;
                 (_a = group.options) === null || _a === void 0 ? void 0 : _a.forEach((option) => {
 					if (option.isSelected) {
 						if(group.name == "Module") {
-							if(option.value == "PostActivity") {
+							if(option.value == this.getRecordSourceConfig().PrimaryEntityName) {
 								hasSourceFilter = true;
 							} else {
 								hasOtherFilter = true;
 							}
-						} else if(group.name == "PostActivity") {
+						} else if(group.name == this.getRecordSourceConfig().PrimaryEntityName) {
 							filterKey.push(option.value);
 						}
                     }
@@ -408,8 +429,8 @@ var CJS;
                         if (group.name == "Module") {
                             childModules.push(option.value);
                         }
-                        if (group.name.indexOf("PostActivity") > -1) {
-                            childModules = childModules.filter((x) => x !== "PostActivity");
+                        if (group.name.indexOf(this.getRecordSourceConfig().PrimaryEntityName) > -1) {
+                            childModules = childModules.filter((x) => x !== this.getRecordSourceConfig().PrimaryEntityName);
                         }
                     }
                 });
@@ -481,7 +502,7 @@ var CJS;
             requestFilterData === null || requestFilterData === void 0 ? void 0 : requestFilterData.forEach((group) => {
                 var _a;
                 let isFirstIteration = true;
-                if (group.name.indexOf("PostActivity") > -1) {
+                if (group.name.indexOf(this.getRecordSourceConfig().PrimaryEntityName) > -1) {
                     (_a = group.options) === null || _a === void 0 ? void 0 : _a.forEach((option) => {
                         if (option.isSelected) {
                             this.updateSelectedParentModuleValues(group.name, option.count, isFirstIteration, filteredData);
@@ -537,10 +558,7 @@ var CJS;
         }
     }
     CJS.FilterHelper = FilterHelper;
-})(CJS || (CJS = {}));
 
-var CJS;
-(function (CJS) {
     class String {
         static formatString() {
 			var args = arguments;
@@ -552,14 +570,4 @@ var CJS;
 		}
     }
     CJS.String = String;
-})(CJS || (CJS = {}));
-
-var CJS;
-(function (CJS) {
-    class TimelineConfig {
-        constructor() {
-            this.Configs = []; // Initialize the array of objects
-        }
-    }
-    CJS.TimelineConfig = TimelineConfig;
 })(CJS || (CJS = {}));
