@@ -14,9 +14,6 @@ var CJS;
 		recordsData = [];
 		
 		constructor() {
-			//CJS.FilterHelper.setPrimaryEntity("PostActivity");
-			//CJS.FilterHelper.setRecordSourceConfig(JSON.parse('{"SvgIconSrcPath": "msdyn_cec_Available.svg","PrimaryEntityName": "PostActivity","PrimaryEntityLogicalName": "cjs_postactivity","RecordFilter": "?$filter=cjs_accountid/accountid eq '{0}'","FilterLabel": "Post Activities","RecordFields": {"IdField": "cjs_postactivityid","SortDateField": "cjs_createdon","NameField": "cjs_postactivityname","FilterIdField": "cjs_postactivitytype","FilterValueField": "cjs_postactivitytype@OData.Community.Display.V1.FormattedValue""CreatedOnField": "cjs_createdon"}}'));
-			
 			CJS.FilterHelper.setRecordSourceConfig({
 	SvgIconSrcPath: "msdyn_cec_Available.svg",
 	PrimaryEntityName: "PostActivity",
@@ -36,7 +33,7 @@ var CJS;
 		
         init(context) {
             this.context = context;
-            this.svgIconSrcPath = Xrm.Utility.getGlobalContext().getWebResourceUrl("msdyn_cec_Available.svg");
+            this.svgIconSrcPath = Xrm.Utility.getGlobalContext().getWebResourceUrl(CJS.FilterHelper.getRecordSourceConfig().SvgIconSrcPath);
             return Promise.resolve();
         }
         getRecordSourceInfo() {
@@ -87,8 +84,8 @@ var CJS;
 				
 				try {
 					const primaryId = this.context.page.entityId;
-					const filter="?$filter=cjs_accountid/accountid eq '{0}'"
-					let filteredRawRecords = yield this.context.webAPI.retrieveMultipleRecords("cjs_postactivity", CJS.String.formatString(filter, primaryId));
+					//const filter="?$filter=cjs_accountid/accountid eq '{0}'"
+					let filteredRawRecords = yield this.context.webAPI.retrieveMultipleRecords(CJS.FilterHelper.getRecordSourceConfig().PrimaryEntityLogicalName, CJS.String.formatString(CJS.FilterHelper.getRecordSourceConfig().RecordFilter, primaryId));
 					if ((filteredRawRecords === null || filteredRawRecords === void 0 ? void 0 : filteredRawRecords.entities.length) != 0) {
 						recordsData = this.processRecordsData(filteredRawRecords.entities);
 					}
@@ -101,14 +98,14 @@ var CJS;
 			try {
 				rawRecordsData === null || rawRecordsData === void 0 ? void 0 : rawRecordsData.forEach(element => {
 					let recordData = {
-						id: element["cjs_postactivityid"],
-						sortDateValue: element["cjs_createdon"],
+						id: element[CJS.FilterHelper.getRecordSourceConfig().RecordFields.IdField],
+						sortDateValue: element[CJS.FilterHelper.getRecordSourceConfig().RecordFields.SortDateField],
 						data: JSON.stringify({
-							id: element["cjs_postactivityid"],
-							name: element["cjs_postactivityname"],
-							filterFieldId: element["cjs_postactivitytype"],
-							filterFieldValue: element["cjs_postactivitytype@OData.Community.Display.V1.FormattedValue"],
-							createdOn: element["cjs_createdon"],
+							id: element[CJS.FilterHelper.getRecordSourceConfig().RecordFields.IdField],
+							name: element[CJS.FilterHelper.getRecordSourceConfig().RecordFields.NameField],
+							filterFieldId: element[CJS.FilterHelper.getRecordSourceConfig().RecordFields.FilterIdField],
+							filterFieldValue: element[CJS.FilterHelper.getRecordSourceConfig().RecordFields.FilterValueField],
+							createdOn: element[CJS.FilterHelper.getRecordSourceConfig().RecordFields.CreatedOnField],
 						})
 					};
 					recordsData.push(recordData);
@@ -120,7 +117,6 @@ var CJS;
             return __awaiter(this, void 0, void 0, function* () {
 				var filtersData = [];
 				var recordsData = (this.recordsData !== undefined && this.recordsData !== null) ? this.recordsData : [];
-				//var recordsData = [];
 
 				try {		
 					if ((filter === null || filter === void 0 ? void 0 : filter.filterData) && filter.filterData.length > 0) {
@@ -170,7 +166,7 @@ var CJS;
 							options: [
 								{
 									value: CJS.FilterHelper.getRecordSourceConfig().PrimaryEntityName,
-									label: "PostActivity",
+									label: CJS.FilterHelper.getRecordSourceConfig().FilterLabel,
 									count: recordsData.length,
 									isSelected: isCustomRecordTypeSelected,
 								},
@@ -179,7 +175,7 @@ var CJS;
 						{
 							// #2 - new custom filter group
 							name: CJS.FilterHelper.getRecordSourceConfig().PrimaryEntityName,
-							label: "Post Activities",
+							label: CJS.FilterHelper.getRecordSourceConfig().FilterLabel,
 							type: "MultiSelect",
 							isExpanded: true,
 							options: Object.values(filterOptions),
@@ -195,7 +191,7 @@ var CJS;
 							options: [
 								{
 									value: CJS.FilterHelper.getRecordSourceConfig().PrimaryEntityName,
-									label: "PostActivity",
+									label: CJS.FilterHelper.getRecordSourceConfig().FilterLabel,
 									count: recordsData.length,
 									isSelected: isCustomRecordTypeSelected,
 								},
@@ -308,12 +304,6 @@ var CJS;
     CJS.CustomGenericRecordSource = CustomGenericRecordSource;
 
     class FilterHelper {
-		static setRecordSourceConfig(config) {
-			this.RecordSourceConfig = config;
-		}
-		static getRecordSourceConfig() {
-			return this.RecordSourceConfig;
-		}
         static getFilterDetailsFilterApplied(allFiltersData, requestFilterData) {
             let selectedFilterModules = [];
             let filteredData = [];
@@ -491,12 +481,11 @@ var CJS;
             return modifiedDateFilterData;
         }
         static updateParentModuleFilterData(filteredData, selectedFilterModules, requestFilterData) {
-            if (selectedFilterModules.indexOf("Module" /* RecordType */) == -1) {
+            if (selectedFilterModules.indexOf("Module") == -1) {
 				var formFilterData = CJS.FilterHelper.getFilterData();
 				formFilterData === null || formFilterData === void 0 ? void 0 : formFilterData.forEach((element) => {
 					filteredData.push(element);
 				});
-				//filteredData.push(CJS.FilterHelper.getFilterData()[0]);
             }
             // adjust module counts
             requestFilterData === null || requestFilterData === void 0 ? void 0 : requestFilterData.forEach((group) => {
@@ -516,7 +505,7 @@ var CJS;
             var _a;
 			if(filteredData !== undefined && filteredData !== null && filteredData.length > 0) {
 				(_a = filteredData.filter((data) => {
-					return data.name == "Module" /* RecordType */;
+					return data.name == "Module";
 				})[0]
 					.options) === null || _a === void 0 ? void 0 : _a.forEach((option) => {
 					if (name.indexOf(option.value) > -1) {
@@ -537,6 +526,13 @@ var CJS;
             });
             return childGroups;
         }
+
+		static setRecordSourceConfig(config) {
+			this.RecordSourceConfig = config;
+		}
+		static getRecordSourceConfig() {
+			return this.RecordSourceConfig;
+		}
         static setFilterData(oFilterData) {
 			this.FilterData = oFilterData;
         }
