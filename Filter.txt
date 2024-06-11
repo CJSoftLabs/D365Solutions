@@ -9,26 +9,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 
 var CJS;
-(function (CJS) {
+(function (CJS) {	
     class CustomGenericRecordSource {
 		recordsData = [];
 		
-		constructor() {
-			CJS.FilterHelper.setRecordSourceConfig({
-	SvgIconSrcPath: "msdyn_cec_Available.svg",
-	PrimaryEntityName: "PostActivity",
-	PrimaryEntityLogicalName: "cjs_postactivity",
-	RecordFilter: "?$filter=cjs_accountid/accountid eq '{0}'",
-	FilterLabel: "Post Activities",
-	RecordFields: {
-		IdField: "cjs_postactivityid",
-		SortDateField: "cjs_createdon",
-		NameField: "cjs_postactivityname",
-		FilterIdField: "cjs_postactivitytype",
-		FilterValueField: "cjs_postactivitytype@OData.Community.Display.V1.FormattedValue",
-		CreatedOnField: "cjs_createdon",
-	}
-});
+		constructor(configdata) {
+			this.configdata = configdata;
+			CJS.FilterHelper.setRecordSourceConfig(this.configdata);
 		}
 		
         init(context) {
@@ -566,4 +553,26 @@ var CJS;
 		}
     }
     CJS.String = String;
+	
+    class PostActivityRecordSource extends CJS.CustomGenericRecordSource {
+		constructor() {
+			console.log("PostActivityRecordSource - Constructor");
+			super({
+				SvgIconSrcPath: "msdyn_cec_Available.svg",
+				PrimaryEntityName: "PostActivity",
+				PrimaryEntityLogicalName: "cjs_postactivity",
+				RecordFilter: "?$filter=cjs_accountid/accountid eq '{0}'",
+				FilterLabel: "Post Activities",
+				RecordFields: {
+					IdField: "cjs_postactivityid",
+					SortDateField: "cjs_createdon",
+					NameField: "cjs_postactivityname",
+					FilterIdField: "cjs_postactivitytype",
+					FilterValueField: "cjs_postactivitytype@OData.Community.Display.V1.FormattedValue",
+					CreatedOnField: "cjs_createdon",
+				}
+			});
+		}
+	}
+    CJS.PostActivityRecordSource = PostActivityRecordSource;
 })(CJS || (CJS = {}));
