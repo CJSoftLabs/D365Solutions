@@ -93,6 +93,7 @@ var CJS;
 							filterFieldId: element[CJS.FilterHelper.getRecordSourceConfig().RecordFields.FilterIdField],
 							filterFieldValue: element[CJS.FilterHelper.getRecordSourceConfig().RecordFields.FilterValueField],
 							createdOn: element[CJS.FilterHelper.getRecordSourceConfig().RecordFields.CreatedOnField],
+							modifiedOn: element[CJS.FilterHelper.getRecordSourceConfig().RecordFields.ModifiedOnField],
 						})
 					};
 					recordsData.push(recordData);
@@ -192,25 +193,28 @@ var CJS;
             });
         }
         getRecordUX(recordData, recordState) {
-            const record = this.buildRecordUX(recordData, recordState.isExpanded);
-            return record;
+            return this.buildRecordUX(recordData, recordState.isExpanded);
         }
         getRecordsAfterLastItem(recordsData, lastItem) {
             const lastItemIndex = recordsData.findIndex((item) => item.id == lastItem.id);
             return recordsData.slice(lastItemIndex + 1);
         }
         buildRecordUX(recordData, isExpanded) {
+			if(!CJS.UxUtilities.isComponentFactorySet()) {
+				CJS.UxUtilities.setComponentFactory(this.context.factory);
+			}
             const recordId = recordData.id;
             const sortDateValue = recordData.sortDateValue;
             const parsedRecordDetails = JSON.parse(recordData.data);
-            const commandComponents = this.createCommands();
-            const headerComponents = [this.createHeaderComponent(recordId, parsedRecordDetails.name)];
-            const bodyComponents = [this.createBodyComponent(recordId)];
-            const footerComponents = [this.createFooterComponent(recordId, parsedRecordDetails.createdOn, isExpanded)];
-            const icon = this.createIcon();
+			const commandComponents = this.configdata.Commands;
+            //const headerComponents = [("Modified on: " + CJS.DateUtilities.formatDateString(parsedRecordDetails.modifiedOn, 'en-GB')), CJS.UxUtilities.createHeaderComponent(this.context.factory, parsedRecordDetails, this.configdata.HeaderConfig)];
+			const headerComponents = [CJS.UxUtilities.createHeaderComponent(parsedRecordDetails, this.configdata.HeaderConfig)];
+            const bodyComponents = [CJS.UxUtilities.createBodyComponent(recordId)];
+            const footerComponents = [CJS.UxUtilities.createFooterComponent(recordId, parsedRecordDetails.createdOn, isExpanded)];
+			const icon = this.configdata.RecordIcon;
             // example of use custom icon component
-            const bubbleIcon = recordId.includes("D365") && this.createIconComponent(recordId);
-            const headerIcon = recordId.includes("D365") && this.createIconComponent(recordId);
+            const bubbleIcon = recordId.includes("D365") && CJS.UxUtilities.createIconComponent(recordId);
+            const headerIcon = recordId.includes("D365") && CJS.UxUtilities.createIconComponent(recordId);
             const moduleName = this.getModuleName();
             const timelineRecord = {
                 id: recordId,
@@ -227,48 +231,8 @@ var CJS;
             };
             return timelineRecord;
         }
-        createCommands() {
-            return [
-                {
-                    iconType: 203,
-                    label: "Command Label: Visit Microsoft Support",
-                    command: "VisitSMC",
-                    commandType: "HYPERLINK",
-                    href: "https://support.microsoft.com",
-                },
-            ];
-        }
-        createIcon() {
-            return {
-                type: 205,
-                accessibleName: "CustomGenericDataSource icon accessibleName",
-            };
-        }
-        createIconComponent(recordId) {
-            const imgProps = {
-                id: recordId,
-                source: this.svgIconSrcPath,
-                style: {},
-            };
-            return this.context.factory.createElement("IMG", imgProps);
-        }
         getModuleName() {
             return "CustomGenericDataSource";
-        }
-        createHeaderComponent(recordId, recordName) {
-            return this.context.factory.createElement("Label", {
-                key: "CustomGenericDataSource_" + recordId + "_header",
-            }, "[Header] " + recordName);
-        }
-        createBodyComponent(recordId) {
-            return this.context.factory.createElement("Label", {
-                key: "CustomGenericDataSource_" + recordId + "body",
-            }, "[Body] " + "Post Activity Id: " + recordId);
-        }
-        createFooterComponent(recordId, date, isExpanded) {
-            return this.context.factory.createElement("Label", {
-                key: "CustomGenericDataSource_" + recordId + "footer",
-            }, "[Footer] " + "createdOn: " + date + "	RecordStatus: " + (isExpanded ? " Expanded" : " Collapsed"));
         }
         // non-robust orderRecordsData
         orderRecordsData(recordsData, isAscending) {
@@ -542,6 +506,68 @@ var CJS;
     }
     CJS.FilterHelper = FilterHelper;
 
+    class UxUtilities {
+		static setComponentFactory(factory) {
+			this.componentfactory = factory;
+		}
+		static isComponentFactorySet() {
+			return !(this.componentfactory === null || this.componentfactory === undefined);
+		}
+        static createIconComponent(recordId) {
+            const imgProps = {
+                id: recordId,
+                source: this.svgIconSrcPath,
+                style: {},
+            };
+            return this.componentfactory.createElement("IMG", imgProps);
+        }
+		static addComponentToContainer(component, container) {
+			container.appendChild(component);
+			return container;
+		}
+		static createHtmlComponent(elementType, key, value) {
+            return this.componentfactory.createElement(elementType, { key: key, }, value);
+		}
+        static createHeaderComponent(record, headerConfig) {
+            // return componentfactory.createElement("Label", {
+                // key: "CustomGenericDataSource_" + recordId + "_header",
+            // }, "[Header] " + recordName);
+
+			let childElements = [];
+			//headerConfig === null || headerConfig === void 0 ? void 0 : 
+			headerConfig.forEach(el => {
+				childElements.push(this.createHtmlComponent(el.elementType, ("CustomGenericDataSource_" + record.id + "_header_" + el.name), this.getFormattedValue(record, el)));
+				console.log(("CustomGenericDataSource_" + record.id + "_header_" + el.name));
+				console.log(this.getFormattedValue(record, el));
+			});
+			
+			var parentDiv = this.createHtmlComponent("container", ("CustomGenericDataSource_" + record.id + "_header_container"), (childElements.length > 0) ? childElements : []);
+			//var parentDiv = this.createHtmlComponent("container", ("CustomGenericDataSource_" + record.id + "_header_container"));
+			return parentDiv;
+        }
+		static getFormattedValue(record, headerConfig) {
+			var returnValue = "";
+			switch(headerConfig.dataType.toLowerCase()){
+				case "datetime":
+					returnValue = CJS.DateUtilities.formatDateString(record[headerConfig.value], headerConfig.format);
+					break;
+			}
+			
+			return returnValue;
+		}
+        static createBodyComponent(recordId) {
+            return this.componentfactory.createElement("Label", {
+                key: "CustomGenericDataSource_" + recordId + "body",
+            }, "[Body] " + "Post Activity Id: " + recordId);
+        }
+        static createFooterComponent(recordId, date, isExpanded) {
+            return this.componentfactory.createElement("Label", {
+                key: "CustomGenericDataSource_" + recordId + "footer",
+            }, "[Footer] " + "createdOn: " + date + "	RecordStatus: " + (isExpanded ? " Expanded" : " Collapsed"));
+        }
+    }
+    CJS.UxUtilities = UxUtilities;
+
     class String {
         static formatString() {
 			var args = arguments;
@@ -553,6 +579,24 @@ var CJS;
 		}
     }
     CJS.String = String;
+
+	class DateUtilities {
+		static options = {
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit',
+			hour12: true,
+		};
+
+		static formatDateString(isoString, locale) {
+			const date = new Date(isoString);
+			return date.toLocaleDateString(locale, DateUtilities.options).toUpperCase().replace(",", "");
+		}
+	}
+    CJS.DateUtilities = DateUtilities;
 	
     class PostActivityRecordSource extends CJS.CustomGenericRecordSource {
 		constructor() {
@@ -570,7 +614,31 @@ var CJS;
 					FilterIdField: "cjs_postactivitytype",
 					FilterValueField: "cjs_postactivitytype@OData.Community.Display.V1.FormattedValue",
 					CreatedOnField: "cjs_createdon",
-				}
+					ModifiedOnField: "cjs_createdon",
+				},
+				RecordIcon: {
+					type: 205,
+					accessibleName: "CustomGenericDataSource icon accessibleName",
+				},
+				Commands: [
+					{
+						iconType: 203,
+						label: "Command Label: Visit Microsoft Support",
+						command: "VisitSMC",
+						commandType: "HYPERLINK",
+						href: "https://support.microsoft.com",
+					},
+				],
+				HeaderConfig: [
+					{
+						elementType: "label",
+						sequence: 1,
+						dataType: "datetime",
+						value: "modifiedOn"	,
+						format: "en-GB",
+						name: "modifiedon",
+					}
+				],
 			});
 		}
 	}
