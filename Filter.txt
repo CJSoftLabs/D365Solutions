@@ -20,7 +20,7 @@ var CJS;
 		
         init(context) {
             this.context = context;
-            this.svgIconSrcPath = Xrm.Utility.getGlobalContext().getWebResourceUrl(CJS.FilterHelper.getRecordSourceConfig().SvgIconSrcPath);
+            this.SvgIconSrcPath = Xrm.Utility.getGlobalContext().getWebResourceUrl(CJS.FilterHelper.getRecordSourceConfig().SvgIconSrcPath);
             return Promise.resolve();
         }
         getRecordSourceInfo() {
@@ -207,14 +207,16 @@ var CJS;
             const sortDateValue = recordData.sortDateValue;
             const parsedRecordDetails = JSON.parse(recordData.data);
 			const commandComponents = this.configdata.Commands;
-            //const headerComponents = [("Modified on: " + CJS.DateUtilities.formatDateString(parsedRecordDetails.modifiedOn, 'en-GB')), CJS.UxUtilities.createHeaderComponent(this.context.factory, parsedRecordDetails, this.configdata.HeaderConfig)];
-			const headerComponents = [CJS.UxUtilities.createHeaderComponent(parsedRecordDetails, this.configdata.HeaderConfig)];
-            const bodyComponents = [CJS.UxUtilities.createBodyComponent(recordId)];
-            const footerComponents = [CJS.UxUtilities.createFooterComponent(recordId, parsedRecordDetails.createdOn, isExpanded)];
+			
+			const headerComponents = [CJS.UxUtilities.createCardComponent(parsedRecordDetails, this.configdata.HeaderConfig, "header")];
+            const bodyComponents = [CJS.UxUtilities.createCardComponent(parsedRecordDetails, this.configdata.BodyConfig, "body")];
+			const footerComponents = [CJS.UxUtilities.createCardComponent(parsedRecordDetails, this.configdata.FooterConfig, "footer")];
+            //const footerComponents = [CJS.UxUtilities.createFooterComponent(recordId, parsedRecordDetails.createdOn, isExpanded)];
 			const icon = this.configdata.RecordIcon;
+			
             // example of use custom icon component
-            const bubbleIcon = recordId.includes("D365") && CJS.UxUtilities.createIconComponent(recordId);
-            const headerIcon = recordId.includes("D365") && CJS.UxUtilities.createIconComponent(recordId);
+            const bubbleIcon = recordId.includes("D365") && CJS.UxUtilities.createIconComponent(recordId, this.SvgIconSrcPath);
+            const headerIcon = recordId.includes("D365") && CJS.UxUtilities.createIconComponent(recordId, this.SvgIconSrcPath);
             const moduleName = this.getModuleName();
             const timelineRecord = {
                 id: recordId,
@@ -513,58 +515,58 @@ var CJS;
 		static isComponentFactorySet() {
 			return !(this.componentfactory === null || this.componentfactory === undefined);
 		}
-        static createIconComponent(recordId) {
+        static createIconComponent(recordId, iconSource) {
             const imgProps = {
                 id: recordId,
-                source: this.svgIconSrcPath,
+                source: iconSource,
                 style: {},
             };
             return this.componentfactory.createElement("IMG", imgProps);
         }
-		static addComponentToContainer(component, container) {
-			container.appendChild(component);
-			return container;
-		}
 		static createHtmlComponent(elementType, key, value) {
             return this.componentfactory.createElement(elementType, { key: key, }, value);
 		}
-        static createHeaderComponent(record, headerConfig) {
-            // return componentfactory.createElement("Label", {
-                // key: "CustomGenericDataSource_" + recordId + "_header",
-            // }, "[Header] " + recordName);
-
+        static createCardComponent(record, componentConfig, componentType) {
 			let childElements = [];
-			//headerConfig === null || headerConfig === void 0 ? void 0 : 
-			headerConfig.forEach(el => {
-				childElements.push(this.createHtmlComponent(el.elementType, ("CustomGenericDataSource_" + record.id + "_header_" + el.name), this.getFormattedValue(record, el)));
-				console.log(("CustomGenericDataSource_" + record.id + "_header_" + el.name));
-				console.log(this.getFormattedValue(record, el));
+			componentConfig === null || componentConfig === void 0 ? void 0 : componentConfig.forEach(el => {
+				switch(el.elementType.toLowerCase()) {
+					case "label":
+					case "container":
+						childElements.push(this.createHtmlComponent(el.elementType, CJS.String.formatString("CustomGenericDataSource_{0}_{1}_{2}_{3}", record.id, componentType, el.sequence, el.name), this.getFormattedValue(record, el)));
+						break;
+					case "crmicon":
+					case "img":
+						var properties = {
+							id: CJS.String.formatString("CustomGenericDataSource_{0}_{1}_{2}_{3}", record.id, componentType, el.sequence, el.name),
+							role: "img",
+							type: el.value
+						}
+						childElements.push(this.createHtmlComponent(el.elementType, properties));
+						break;
+				}
 			});
 			
-			var parentDiv = this.createHtmlComponent("container", ("CustomGenericDataSource_" + record.id + "_header_container"), (childElements.length > 0) ? childElements : []);
-			//var parentDiv = this.createHtmlComponent("container", ("CustomGenericDataSource_" + record.id + "_header_container"));
-			return parentDiv;
+			return this.createHtmlComponent("container", ("CustomGenericDataSource_" + record.id + "_header_container"), (childElements.length > 0) ? childElements : []);
         }
-		static getFormattedValue(record, headerConfig) {
+		static getFormattedValue(record, componentConfig) {
 			var returnValue = "";
-			switch(headerConfig.dataType.toLowerCase()){
+			switch(componentConfig.dataType.toLowerCase()){
 				case "datetime":
-					returnValue = CJS.DateUtilities.formatDateString(record[headerConfig.value], headerConfig.format);
+					returnValue = CJS.DateUtilities.formatDateString(record[componentConfig.value], componentConfig.format);
+					break;
+				case "string":
+					returnValue = "" + record[componentConfig.value];
+					break;
+				case "directstring":
+					returnValue = "" + componentConfig.value;
+					break;
+				case "none":
+					returnValue = "";
 					break;
 			}
 			
 			return returnValue;
 		}
-        static createBodyComponent(recordId) {
-            return this.componentfactory.createElement("Label", {
-                key: "CustomGenericDataSource_" + recordId + "body",
-            }, "[Body] " + "Post Activity Id: " + recordId);
-        }
-        static createFooterComponent(recordId, date, isExpanded) {
-            return this.componentfactory.createElement("Label", {
-                key: "CustomGenericDataSource_" + recordId + "footer",
-            }, "[Footer] " + "createdOn: " + date + "	RecordStatus: " + (isExpanded ? " Expanded" : " Collapsed"));
-        }
     }
     CJS.UxUtilities = UxUtilities;
 
@@ -633,12 +635,114 @@ var CJS;
 					{
 						elementType: "label",
 						sequence: 1,
+						dataType: "directstring",
+						value: "Event Date: ",
+						name: "modifiedonlabel",
+					},
+					{
+						elementType: "label",
+						sequence: 2,
 						dataType: "datetime",
-						value: "modifiedOn"	,
+						value: "modifiedOn",
 						format: "en-GB",
-						name: "modifiedon",
-					}
+						name: "modifiedonvalue",
+					},
+					{
+						elementType: "container",
+						sequence: 3,
+						dataType: "none",
+						name: "newline",
+					// },
+					// {
+						// elementType: "img",
+						// sequence: 4,
+						// value: 205,
+						// name: "cardicon",
+					// },
+					{
+						elementType: "span",
+						sequence: 4,
+						dataType: "none",
+						value: 205,
+						name: "cardicon",
+						cssClass: "symbolFont PhoneCallOutgoing-symbol",
+					},
+					{
+						elementType: "label",
+						sequence: 5,
+						dataType: "string",
+						value: "name",
+						name: "titlelabel",
+					},
 				],
+				BodyConfig: [
+					{
+						elementType: "label",
+						sequence: 1,
+						dataType: "string",
+						value: "filterFieldValue",
+						name: "contentlabel",
+					},
+					// {
+						// elementType: "container",
+						// sequence: 2,
+						// dataType: "none",
+						// name: "newline",
+					// },
+					// {
+						// elementType: "label",
+						// sequence: 3,
+						// dataType: "directstring",
+						// value: "Event Date: ",
+						// name: "modifiedonlabel",
+					// },
+					// {
+						// elementType: "label",
+						// sequence: 4,
+						// dataType: "datetime",
+						// value: "modifiedOn",
+						// format: "en-GB",
+						// name: "modifiedonvalue",
+					// },
+				],
+				FooterConfig: [
+					{
+						elementType: "label",
+						sequence: 1,
+						dataType: "directstring",
+						value: "Created On: ",
+						name: "modifiedonlabel",
+					},
+					{
+						elementType: "label",
+						sequence: 2,
+						dataType: "datetime",
+						value: "modifiedOn",
+						format: "en-GB",
+						name: "modifiedonvalue",
+					},
+					{
+						elementType: "container",
+						sequence: 3,
+						dataType: "none",
+						name: "newline",
+					},
+					{
+						elementType: "label",
+						sequence: 4,
+						dataType: "directstring",
+						value: "Modified On: ",
+						name: "modifiedonlabel",
+					},
+					{
+						elementType: "label",
+						sequence: 5,
+						dataType: "datetime",
+						value: "modifiedOn",
+						format: "en-GB",
+						name: "modifiedonvalue",
+					},
+				]
 			});
 		}
 	}
