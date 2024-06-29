@@ -209,9 +209,9 @@ var CJS;
 			this.configdata.Commands[0].href = CJS.String.formatString("" + this.configdata.Commands[0].href, parsedRecordDetails.id);
 			const commandComponents = this.configdata.Commands;
 			
-			const headerComponents = [CJS.UxUtilities.createCardComponent(parsedRecordDetails, this.configdata.HeaderConfig, "header")];
-            const bodyComponents = [CJS.UxUtilities.createCardComponent(parsedRecordDetails, this.configdata.BodyConfig, "body")];
-			const footerComponents = [CJS.UxUtilities.createCardComponent(parsedRecordDetails, this.configdata.FooterConfig, "footer")];
+			const headerComponents = [CJS.UxUtilities.createCardComponent(parsedRecordDetails, this.configdata.HeaderConfig, this.configdata.ImageMap, "header")];
+            const bodyComponents = [CJS.UxUtilities.createCardComponent(parsedRecordDetails, this.configdata.BodyConfig, this.configdata.ImageMap, "body")];
+			const footerComponents = [CJS.UxUtilities.createCardComponent(parsedRecordDetails, this.configdata.FooterConfig, this.configdata.ImageMap, "footer")];
             //const footerComponents = [CJS.UxUtilities.createFooterComponent(recordId, parsedRecordDetails.createdOn, isExpanded)];
 			const icon = this.configdata.RecordIcon;
 			
@@ -527,7 +527,7 @@ var CJS;
 		static createHtmlComponent(elementType, key, value) {
 			return this.componentfactory.createElement(elementType, { key: key, }, value);
 		}
-        static createCardComponent(record, componentConfig, componentType) {
+        static createCardComponent(record, componentConfig, imageMaps, componentType) {
 			let childElements = [];
 			componentConfig === null || componentConfig === void 0 ? void 0 : componentConfig.forEach(el => {
 				switch(el.elementType.toLowerCase()) {
@@ -537,7 +537,31 @@ var CJS;
 						break;
 					case "crmicon":
 					case "img":
-						childElements.push(this.createIconComponent(CJS.String.formatString("CustomGenericDataSource_{0}_{1}_{2}_{3}", record.id, componentType, el.sequence, el.name), el.value, { height: el.height, width: el.width }));
+						let imageValue = "";
+						let imageMap = {};
+						
+						switch(el.type.toLowerCase())
+						{
+							case "static":
+								imageMap = imageMaps.find(x => x.key === el.value);
+								break;
+							case "fieldmapping":
+								imageMap = imageMaps.find(x => x.key.toLowerCase() === record[el.value].toLowerCase());
+								break;
+						}
+
+						if(imageMap !== null && imageMap !== undefined) {
+							switch(imageMap.type.toLowerCase())
+							{
+								case "url":
+									imageValue = imageMap.value;
+									break;
+								case "webresource":
+									imageValue = Xrm.Utility.getGlobalContext().getWebResourceUrl(imageMap.value);
+									break;
+							}
+						}
+						childElements.push(this.createIconComponent(CJS.String.formatString("CustomGenericDataSource_{0}_{1}_{2}_{3}", record.id, componentType, el.sequence, el.name), imageValue, { height: el.height, width: el.width }));
 						break;
 				}
 			});
@@ -605,6 +629,38 @@ var CJS;
 				PrimaryEntityLogicalName: "cjs_postactivity",
 				RecordFilter: "?$filter=cjs_accountid/accountid eq '{0}'",
 				FilterLabel: "Post Activities",
+				ImageMap: [
+					{
+						key: "Task1",
+						value: "msdyncrm_/KnowledgeSearch/EmailURL.svg",
+						type: "WebResource"
+					},
+					{
+						key: "Task",
+						value: "https://picsum.photos/200",
+						type: "Url"
+					},
+					{
+						key: "Type1",
+						value: "Activities/Images/MailTemplate_16.svg",
+						type: "WebResource"
+					},
+					{
+						key: "Type2",
+						value: "msdyncrm_/KnowledgeSearch/Print.svg",
+						type: "WebResource"
+					},
+					{
+						key: "Type3",
+						value: "msdyncrm_/KnowledgeSearch/DefaultIcon.svg",
+						type: "WebResource"
+					},
+					{
+						key: "Type4",
+						value: "msdyn_CopilotIconWithColor.svg",
+						type: "WebResource"
+					},
+				],
 				RecordFields: {
 					IdField: "cjs_postactivityid",
 					SortDateField: "cjs_createdon",
@@ -652,7 +708,8 @@ var CJS;
 					{
 						elementType: "img",
 						sequence: 4,
-						value: "https://picsum.photos/200",
+						value: "filterFieldValue",
+						type: "fieldmapping",
 						height: "16px",
 						width: "16px",
 						name: "cardicon",
