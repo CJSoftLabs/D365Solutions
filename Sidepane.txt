@@ -1,0 +1,30 @@
+<html><head>
+    <title>Amazon Connect CCP</title>
+<meta><meta></head><body onfocusout="parent.setEmailRange();" style="overflow-wrap: break-word;">
+    <script>
+document.addEventListener("DOMContentLoaded", function() {
+if (typeof Xrm !== "undefined") {
+const paneId = "AmazonConnect";
+
+// Check if the side pane already exists
+const existingPane = Xrm.App.sidePanes.getPane(paneId);
+
+if (!existingPane) {
+// If the pane doesn't exist, create it
+Xrm.App.sidePanes.createPane({
+title: "Amazon Connect - Contact Control Panel (CCP)",
+imageSrc: "WebResources/cjs_amazonconnecticon",
+paneId: paneId,
+canClose: false,
+alwaysRender: true
+}).then((pane) => {
+pane.navigate({
+pageType: "webresource",
+webresourceName: "cjs_amazonconnectccpv2",
+});
+});
+}
+}
+});
+</script>
+</body></html>
